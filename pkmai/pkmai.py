@@ -269,7 +269,7 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
                 r = model.detect([image], verbose=0)[0]
                 # Color splash
                 splash = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-                                    class_names, r['scores'])
+                                    class_names, r['scores'], is_video=True)
                 splash = plt.imread(splash)
                 # RGB -> BGR to save image to video                
                 splash = splash[..., ::-1]
