@@ -33,6 +33,9 @@ import json
 import datetime
 import numpy as np
 import skimage.draw
+import matplotlib.pyplot as plt
+from PIL import Image
+import imageio
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath(os.getcwd())
@@ -41,6 +44,7 @@ ROOT_DIR = os.path.abspath(os.getcwd())
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.config import Config
 from mrcnn import model as modellib, utils
+from mrcnn import visualize
 
 # Path to trained weights file
 COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
@@ -222,6 +226,8 @@ def color_splash(image, mask):
 def detect_and_color_splash(model, image_path=None, video_path=None):
     assert image_path or video_path
 
+    class_names = ['BG', 'Pothole']
+
     # Image or video?
     if image_path:
         # Run model detection and generate the color splash effect
@@ -230,11 +236,12 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         image = skimage.io.imread(args.image)
         # Detect objects
         r = model.detect([image], verbose=1)[0]
-        # Color splash
-        splash = color_splash(image, r['masks'])
+        # Mask and Box image, return as byte stream        
+        img_buff = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
+                                    class_names, r['scores'])                                            
         # Save output
         file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
-        skimage.io.imsave(file_name, splash)
+        plt.imsave(file_name, plt.imread(img_buff))        
     elif video_path:
         import cv2
         # Video capture
@@ -261,15 +268,16 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
                 # Detect objects
                 r = model.detect([image], verbose=0)[0]
                 # Color splash
-                splash = color_splash(image, r['masks'])
-                # RGB -> BGR to save image to video
+                splash = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
+                                    class_names, r['scores'])
+                splash = plt.imread(splash)
+                # RGB -> BGR to save image to video                
                 splash = splash[..., ::-1]
                 # Add image to video writer
                 vwriter.write(splash)
                 count += 1
         vwriter.release()
     print("Saved to ", file_name)
-
 
 ############################################################
 #  Training
