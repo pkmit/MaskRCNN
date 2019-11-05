@@ -12,6 +12,9 @@ import sys
 import random
 import itertools
 import colorsys
+import io
+
+import cv2
 
 import numpy as np
 from skimage.measure import find_contours
@@ -19,6 +22,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches,  lines
 from matplotlib.patches import Polygon
 import IPython.display
+
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../")
@@ -84,7 +88,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
                       scores=None, title="",
                       figsize=(16, 16), ax=None,
                       show_mask=True, show_bbox=True,
-                      colors=None, captions=None):
+                      colors=None, captions=None, is_video=False):
     """
     boxes: [num_instance, (y1, x1, y2, x2, class_id)] in image coordinates.
     masks: [height, width, num_instances]
@@ -115,8 +119,8 @@ def display_instances(image, boxes, masks, class_ids, class_names,
 
     # Show area outside image boundaries.
     height, width = image.shape[:2]
-    ax.set_ylim(height + 10, -10)
-    ax.set_xlim(-10, width + 10)
+    # ax.set_ylim(height + 10, -10)
+    # ax.set_xlim(-10, width + 10)
     ax.axis('off')
     ax.set_title(title)
 
@@ -163,8 +167,14 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
     ax.imshow(masked_image.astype(np.uint8))
-    if auto_show:
+    if auto_show and is_video:
         plt.show()
+
+    img_buffer = io.BytesIO()    
+    _.savefig(img_buffer, format="png", bbox_inches='tight', pad_inches = 0)
+    img_buffer.seek(0)
+    return img_buffer
+    # plt.imsave(os.path.join(ROOT_DIR, "splashs.jpg"), masked_image.astype(np.uint8))
 
 
 def display_differences(image,
