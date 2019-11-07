@@ -36,6 +36,8 @@ import skimage.draw
 import matplotlib.pyplot as plt
 from PIL import Image
 import imageio
+import uuid
+import shutil
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath(os.getcwd())
@@ -228,6 +230,7 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
 
     class_names = ['BG', 'Pothole']
 
+    _uid = str(uuid.uuid4())[:8]
     # Image or video?
     if image_path:
         # Run model detection and generate the color splash effect
@@ -237,11 +240,13 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         # Detect objects
         r = model.detect([image], verbose=1)[0]
         # Mask and Box image, return as byte stream        
-        img_buff = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-                                    class_names, r['scores'])                                            
+        file_path = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
+                                    class_names, r['scores'], colors=generate_color(r['class_ids']), uid=_uid)
         # Save output
-        file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
-        plt.imsave(file_name, plt.imread(img_buff))        
+        shutil.copy2(file_path, ROOT_DIR)
+        temp_folder_cleanup(_uid)
+        # file_name = "splash_{:%Y%m%dT%H%M%S}.jpg".format(datetime.datetime.now())
+        # plt.imsave(file_name, plt.imread(img_buff))
     elif video_path:
         import cv2
         # Video capture
@@ -251,11 +256,11 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         fps = vcapture.get(cv2.CAP_PROP_FPS)
 
         # Define codec and create video writer
-        file_name = "splash_{:%Y%m%dT%H%M%S}.avi".format(datetime.datetime.now())
-        vwriter = cv2.VideoWriter(file_name,
+        uid = uuid.uuid4()
+        file_path = "{}_{:%Y%m%dT%H%M%S}.avi".format(_uid, datetime.datetime.now())
+        vwriter = cv2.VideoWriter(file_path,
                                   cv2.VideoWriter_fourcc(*'MJPG'),
                                   fps, (width, height))
-
         count = 0
         success = True
         while success:
@@ -269,15 +274,34 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
                 r = model.detect([image], verbose=0)[0]
                 # Color splash
                 splash = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-                                    class_names, r['scores'], is_video=True)
-                splash = plt.imread(splash)
-                # RGB -> BGR to save image to video                
-                splash = splash[..., ::-1]
-                # Add image to video writer
-                vwriter.write(splash)
+                                    class_names, r['scores'], colors=generate_color(r['class_ids']), is_video=True, uid=_uid)
+                splash = cv2.imread(splash)
+                splash = cv2.resize(splash, (width, height))
+                vwriter.write(splash)                
                 count += 1
         vwriter.release()
-    print("Saved to ", file_name)
+        temp_folder_cleanup(_uid)
+    print("Saved to ", file_path)
+
+def temp_folder_cleanup(uid):
+    p = os.path.join(ROOT_DIR, "temp", uid)
+    print("Cleaning temp folder {}".format(p))
+    shutil.rmtree(p)
+    
+def generate_color(class_ids):    
+    id_color = [
+        (0.0, 0.0, 0.0), #Background color
+        (242 / 255.0, 5 / 255.0, 5 / 255.0) #Pothole
+    ]
+
+    colors = list()
+
+    for id in class_ids:
+        colors.append(id_color[id])
+
+    return colors
+
+
 
 ############################################################
 #  Training
