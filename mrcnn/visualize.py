@@ -10,6 +10,7 @@ Written by Waleed Abdulla
 import os
 import sys
 import random
+import datetime
 import itertools
 import colorsys
 import io
@@ -88,7 +89,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
                       scores=None, title="",
                       figsize=(16, 16), ax=None,
                       show_mask=True, show_bbox=True,
-                      colors=None, captions=None, is_video=False):
+                      colors=None, captions=None, is_video=False, uid=None):
     """
     boxes: [num_instance, (y1, x1, y2, x2, class_id)] in image coordinates.
     masks: [height, width, num_instances]
@@ -103,10 +104,8 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     """
     # Number of instances
     N = boxes.shape[0]
-    if not N:
-        print("\n*** No instances to display *** \n")
-    else:
-        assert boxes.shape[0] == masks.shape[-1] == class_ids.shape[0]
+    if N:
+       assert boxes.shape[0] == masks.shape[-1] == class_ids.shape[0]
 
     # If no axis is passed, create one and automatically call show()
     auto_show = False
@@ -169,11 +168,15 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     ax.imshow(masked_image.astype(np.uint8))
     if auto_show and not is_video:
         plt.show()
-
-    img_buffer = io.BytesIO()    
-    _.savefig(img_buffer, format="png", bbox_inches='tight', pad_inches = 0)
-    img_buffer.seek(0)
-    return img_buffer
+    
+    temp_path = os.path.join(os.getcwd(), "temp", uid)
+    if not os.path.isdir(temp_path):
+        os.makedirs(temp_path, exist_ok=True)
+    temp_img = os.path.join(temp_path, "img_{:%Y%m%dT%H%M%S}.jpg".format(datetime.datetime.now()))
+    _.savefig(temp_img, format="jpg", bbox_inches='tight', pad_inches = 0)
+    plt.close()
+        
+    return temp_img
     # plt.imsave(os.path.join(ROOT_DIR, "splashs.jpg"), masked_image.astype(np.uint8))
 
 
