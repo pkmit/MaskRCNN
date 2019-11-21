@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Proof of concept - AI Pothole Detection (Image)</title>
+        <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+            integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+            crossorigin=""/>
+        <style>
+            #mapid { height: 400px; width: 100%;}
+        </style>
+        <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+            integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+            crossorigin=""></script>
+        <script>
+            var mymap
+            function bindForm() {
+                var aiform = document.getElementById('aiForm')                
+                aiform.addEventListener('submit', function(evt) {
+                    evt.preventDefault()
+
+                    var fd = new FormData(aiform)                    
+                    pushToAI(fd)
+                })
+
+                var input_img = document.getElementById('aiForm_input')
+                input_img.addEventListener('change', function(evt) {
+                    var fd = new FormData(aiform)
+                    bindImage('ori_img', fd.get('ai_image'))
+                    showExif(fd.get('ai_image'))
+                })                
+                mymap = L.map('mapid');
+                mymap.setView([5.9780066, 116.0728988], 16)
+                L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+                    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                    maxZoom: 18,
+                    id: 'mapbox.streets',
+                    accessToken: 'pk.eyJ1Ijoic2xheWVyMTBzIiwiYSI6ImNrMzhjYmQ0YjA4M3gzb3BmejNjNWhiMDQifQ.JlQHdgwtwT1OmZ2jdKJ2dA'
+                }).addTo(mymap);                
+            }
+
+            function showExif(img) {
+                EXIF.getData(img, function() {
+                    exif = this.exifdata
+                    var lat = toDecimal(exif.GPSLatitude), lng = toDecimal(exif.GPSLongitude)                                    
+                    L.marker([toDecimal(exif.GPSLatitude), toDecimal(exif.GPSLongitude)]).addTo(mymap);
+                    mymap.panTo([lat, lng], 16)
+                })
+            }
+
+            function pushToAI(formdata) {
+                var url = '/prediction'
+                var request = new XMLHttpRequest()                
+                request.open('POST', url)
+                // request.setRequestHeader('Content-Type', 'multipart/form-data')
+                request.send(formdata)
+                request.onreadystatechange = function() {
+                    if (request.readyState === 4) {
+                        switch (request.status) {
+                            case 200:
+                                bindURLtoImage('process_img', request.responseText)
+                            default:
+                                console.warn('Failed')
+                        }
+                    }
+                }
+            }
+
+            function bindImage(bind_to, from_input) {
+                var fileReader = new FileReader()
+                fileReader.onload = function(evt) {
+                    var b = document.getElementById(bind_to)
+                    b.src = evt.target.result
+                }
+                fileReader.readAsDataURL(from_input)                
+            }
+
+            function bindURLtoImage(bind_to, url) {
+                document.getElementById(bind_to).src = url
+            }
+
+            function toDecimal (number) {
+                return number[0].numerator + number[1].numerator /
+                    (60 * number[1].denominator) + number[2].numerator / (3600 * number[2].denominator);
+            };
+
+            window.onload = bindForm
+        </script>
+    </head>
+    <body>
+        <div>
+            <form id="aiForm">
+                <input id='aiForm_input' type="file" name="ai_image"/>
+                <input type="submit" value="Submit" />
+            </form>
+        </div>
+        <div>
+            <table style="width: 100%; text-align: center;">
+                <tr>
+                    <td style="width: 50%;">
+                        <img id='ori_img' style="width: auto; height: 500px;"/>
+                    </td>
+                    <td style="width: 50%;">
+                        <img id='process_img' style="width: auto; height: 500px;"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="width: 100%;">
+                        <div id="mapid"></div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </body>
+</html>
