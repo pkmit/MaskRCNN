@@ -89,7 +89,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
                       scores=None, title="",
                       figsize=(16, 16), ax=None,
                       show_mask=True, show_bbox=True,
-                      colors=None, captions=None, is_video=False, uid=None):
+                      colors=None, captions=None, is_video=False, show_preview=False,uid=None):
     """
     boxes: [num_instance, (y1, x1, y2, x2, class_id)] in image coordinates.
     masks: [height, width, num_instances]
@@ -107,11 +107,9 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     if N:
        assert boxes.shape[0] == masks.shape[-1] == class_ids.shape[0]
 
-    # If no axis is passed, create one and automatically call show()
-    auto_show = False
+    # If no axis is passed, create one and automatically call show()    
     if not ax:
-        _, ax = plt.subplots(1, figsize=figsize)
-        auto_show = True
+        _, ax = plt.subplots(1, figsize=figsize)        
 
     # Generate random colors
     colors = colors or random_colors(N)
@@ -166,7 +164,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
     ax.imshow(masked_image.astype(np.uint8))
-    if auto_show and not is_video:
+    if show_preview == True:
         plt.show()
     
     temp_path = os.path.join(os.getcwd(), "temp", uid)
@@ -176,8 +174,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     _.savefig(temp_img, format="jpg", bbox_inches='tight', pad_inches = 0)
     plt.close()
         
-    return temp_img
-    # plt.imsave(os.path.join(ROOT_DIR, "splashs.jpg"), masked_image.astype(np.uint8))
+    return temp_img    
 
 
 def display_differences(image,
