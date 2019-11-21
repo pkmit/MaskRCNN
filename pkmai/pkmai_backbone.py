@@ -24,6 +24,7 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
     python3 balloon.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
 
     # Apply color splash to video using the last weights you trained
+
     python3 balloon.py splash --weights=last --video=<URL or path to file>
 """
 
@@ -49,7 +50,7 @@ from mrcnn import model as modellib, utils
 from mrcnn import visualize
 
 DEFAULT_WEIGHT = os.path.join(ROOT_DIR, 'weight', 'mask_rcnn_roaddefect_0078.h5')
-TEMP_PATH = os.path.join(ROOT_DIR, 'temp')
+TEMP_PATH = os.path.join(ROOT_DIR, 'processed')
 LOG_DIR = os.path.join(ROOT_DIR, 'logs')
 
 ############################################################
@@ -170,7 +171,7 @@ class RoadDefectDataset(utils.Dataset):
             super(self.__class__, self).image_reference(image_id)    
 
 def detect_and_color_splash(model, image_path=None, video_path=None):
-    assert image_path or video_path
+    assert image_path or video_path    
 
     class_names = ['BG', 'Pothole']
 
@@ -181,13 +182,13 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         print("Running on {}".format(image_path))
         # Read image
         image = skimage.io.imread(image_path)
-        # Detect objects
+        # Detect objects        
         r = model.detect([image], verbose=1)[0]
         # Mask and Box image, return as byte stream        
         file_path = visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
-                                    class_names, r['scores'], colors=generate_color(r['class_ids']), uid=_uid)
+                                    class_names, r['scores'], colors=generate_color(r['class_ids']), show_preview=False ,uid=_uid)
         # Save output
-        shutil.copy2(file_path, ROOT_DIR)
+        shutil.copy2(file_path, TEMP_PATH)
         temp_folder_cleanup(_uid)
         # file_name = "splash_{:%Y%m%dT%H%M%S}.jpg".format(datetime.datetime.now())
         # plt.imsave(file_name, plt.imread(img_buff))
@@ -226,6 +227,7 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         vwriter.release()
         temp_folder_cleanup(_uid)
     print("Saved to ", file_path)
+    return file_path
 
 def temp_folder_cleanup(uid):
     p = os.path.join(ROOT_DIR, "temp", uid)
@@ -246,6 +248,7 @@ def generate_color(class_ids):
     return colors
 
 class PKMAI_BACKBONE:        
+    model = None
     def __init__(self):  
         class InferenceConfig(RoadDefectConfig):            
             GPU_COUNT = 1 # Set batch size to 1 since we'll be running inference on
@@ -257,6 +260,9 @@ class PKMAI_BACKBONE:
         weights_path = DEFAULT_WEIGHT
         self.model = modellib.MaskRCNN(mode="inference", config=config, model_dir=LOG_DIR)
         self.model.load_weights(weights_path, by_name=True)
+        self.model.keras_model._make_predict_function()
             
     def prediction(self, img_path):
-        detect_and_color_splash(self.model, image_path=img_path, video_path=None)
+        if self.model == None:
+            return None
+        return detect_and_color_splash(self.model, image_path=img_path, video_path=None)
